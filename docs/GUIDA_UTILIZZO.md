@@ -12,20 +12,22 @@ Mostra:
 - valutazioni
 - archivio attivo
 
-## Nuovo Cliente
+## Nuovo Cliente con autocompilazione
 
-Inserisci:
+Puoi inserire il cliente manualmente oppure caricare un report PDF o una visura camerale.
 
-- denominazione
-- P.IVA/C.F.
-- sede
-- attivita
-- PEC
-- amministratore
-- telefono
-- email
-
-Poi premi `Salva cliente`.
+1. Vai su `Nuovo Cliente`.
+2. Carica il PDF nel campo `Carica report PDF o visura per autocompilare`.
+3. Il sistema prova a compilare automaticamente:
+   - denominazione
+   - P.IVA/C.F.
+   - sede
+   - attivita
+   - PEC
+   - amministratore / legale rappresentante
+4. Controlla i dati.
+5. Correggi eventuali errori.
+6. Premi `Salva cliente`.
 
 ## Collaboratori
 
@@ -36,14 +38,16 @@ Inserisci:
 - cellulare
 - mail
 
-## Inserisci Report
+## Inserisci Report/Visura
 
-1. Carica un PDF.
-2. Il sistema prova a leggere il testo.
-3. Mostra i dati estratti.
-4. Correggi eventuali errori.
-5. Conferma il salvataggio.
-6. Il sistema salva cliente, documento e valutazione.
+1. Vai su `Inserisci Report/Visura`.
+2. Carica un report PDF oppure una visura camerale.
+3. Il sistema riconosce se il documento e un report o una visura.
+4. Compila automaticamente i dati aziendali e l'amministratore.
+5. Controlla e correggi i campi.
+6. Conferma il salvataggio.
+7. Il sistema salva cliente e documento.
+8. Se trova ricavi, MOL, utile, cash flow o indebitamento, crea anche la valutazione.
 
 ## Gestione Documenti
 

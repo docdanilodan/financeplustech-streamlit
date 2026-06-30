@@ -1,0 +1,15 @@
+{
+  "clienti_demo": [
+    {
+      "denominazione": "FASHION ITALY S.R.L.",
+      "piva": "12657241001",
+      "sede": "CORSO TRIESTE 171, 00198 ROMA (RM)",
+      "attivita": "Attivita di design di moda e design industriale",
+      "pec": "FASHIONITALY@LEGALMAIL.IT",
+      "amministratore": "SABA UGO ROBERTO ALFRED A.",
+      "affidabilita": "Buona",
+      "fido_report": "170000"
+    }
+  ],
+  "note": "Dati demo per test FinancePlusTech."
+}

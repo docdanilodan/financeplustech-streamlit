@@ -6,10 +6,11 @@ Web app Streamlit per archivio clienti, collaboratori, documenti, richieste, mai
 
 - Dashboard con KPI
 - Nuovo cliente
+- Autocompilazione anagrafica da report PDF o visura camerale
+- Estrazione automatica dati azienda, P.IVA, sede, attivita, PEC e amministratore
 - Elenco clienti
 - Collaboratori
-- Inserimento report PDF
-- Estrazione dati base da report PDF
+- Inserimento report PDF o visura
 - Gestione documenti
 - Archivio locale, Google Drive o pCloud
 - Gestione richieste documentali
@@ -18,6 +19,25 @@ Web app Streamlit per archivio clienti, collaboratori, documenti, richieste, mai
 - Generazione report PDF
 - Dati demo
 
+## Come usare l'autocompilazione
+
+### Metodo 1: Nuovo Cliente
+
+1. Vai su `Nuovo Cliente`.
+2. Carica un report PDF o una visura camerale.
+3. Il sistema compila automaticamente i campi disponibili.
+4. Controlla e correggi.
+5. Premi `Salva cliente`.
+
+### Metodo 2: Inserisci Report/Visura
+
+1. Vai su `Inserisci Report/Visura`.
+2. Carica il PDF.
+3. Il sistema riconosce se e un report o una visura.
+4. Compila i dati azienda e amministratore.
+5. Salva cliente e documento.
+6. Se nel report ci sono indicatori economici, crea anche la valutazione.
+
 ## Struttura progetto
 
 ```text
@@ -25,7 +45,6 @@ app.py
 requirements.txt
 README.md
 AVVIA_WINDOWS.bat
-.gitignore
 financeplus/
   __init__.py
   db.py

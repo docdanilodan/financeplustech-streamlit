@@ -28,6 +28,10 @@ def clienti_options():
     return {f"{r.denominazione or 'Senza nome'} | ID {r.id}": int(r.id) for r in c.itertuples()}
 
 
+def has_indicatori(ricavi, mol, utile, cash_flow, indice):
+    return any(str(x or '').strip() not in ['', '0', '0,00', '0.00'] for x in [ricavi, mol, utile, cash_flow, indice])
+
+
 def dashboard():
     hero()
     a,b,c,d,e,f = st.columns(6)
@@ -44,19 +48,32 @@ def dashboard():
 
 def nuovo_cliente():
     st.header('Nuovo Cliente')
+    st.info('Puoi caricare un report PDF o una visura camerale: il sistema compila automaticamente dati azienda e amministratore.')
+    uploaded_pdf = st.file_uploader('Carica report PDF o visura per autocompilare', type=['pdf'], key='autofill_nuovo_cliente')
+    auto_data = {}
+    if uploaded_pdf:
+        auto_data, _ = parse_report_pdf(uploaded_pdf)
+        st.success(f"Documento letto come: {auto_data.get('tipo_documento', 'PDF')}. Controlla i campi prima di salvare.")
+
     with st.form('cliente'):
-        denominazione = st.text_input('Denominazione')
-        piva = st.text_input('P.IVA / C.F.')
-        sede = st.text_input('Sede')
-        attivita = st.text_input('Attività')
-        pec = st.text_input('PEC')
-        amministratore = st.text_input('Amministratore')
+        denominazione = st.text_input('Denominazione', auto_data.get('denominazione', ''))
+        piva = st.text_input('P.IVA / C.F.', auto_data.get('piva', ''))
+        sede = st.text_input('Sede', auto_data.get('sede', ''))
+        attivita = st.text_input('Attività', auto_data.get('attivita', ''))
+        pec = st.text_input('PEC', auto_data.get('pec', ''))
+        amministratore = st.text_input('Amministratore / Legale rappresentante', auto_data.get('amministratore', ''))
         telefono = st.text_input('Telefono')
         email = st.text_input('Email')
         salva = st.form_submit_button('Salva cliente')
+
     if salva:
-        i = insert_cliente(denominazione, piva, sede, attivita, pec, amministratore, telefono, email)
-        st.success(f'Cliente salvato con ID {i}')
+        cliente_id = insert_cliente(denominazione, piva, sede, attivita, pec, amministratore, telefono, email)
+        if uploaded_pdf:
+            categoria = auto_data.get('tipo_documento', 'Report')
+            uploaded_pdf.seek(0)
+            local_path, provider, cloud_id = archive_uploaded_file(cliente_id, categoria, uploaded_pdf)
+            insert_documento(cliente_id, categoria, uploaded_pdf.name, local_path, provider, cloud_id)
+        st.success(f'Cliente salvato con ID {cliente_id}. Dati compilati da PDF se presenti.')
 
 
 def elenco_clienti():
@@ -78,14 +95,23 @@ def collaboratori():
     st.dataframe(list_collaboratori(), use_container_width=True)
 
 
-def inserisci_report():
-    st.header('Inserisci Report PDF')
-    uploaded = st.file_uploader('Carica report PDF', type=['pdf'])
+def inserisci_report_visura():
+    st.header('Inserisci Report PDF o Visura')
+    uploaded = st.file_uploader('Carica report PDF o visura camerale', type=['pdf'], key='report_visura')
     if not uploaded:
-        st.caption('Carica un report PDF. Il sistema prova a estrarre anagrafica e indicatori.')
+        st.caption('Carica un PDF. Il sistema prova a compilare denominazione, P.IVA, sede, attività, PEC e amministratore.')
         return
+
     data, _ = parse_report_pdf(uploaded)
-    with st.form('review_report'):
+    tipo = data.get('tipo_documento', 'Report')
+    st.success(f'Documento riconosciuto come: {tipo}')
+    st.subheader('Dati estratti - correggi prima di salvare')
+
+    categorie = ['Report', 'Visura', 'Bilancio', 'Centrale Rischi', 'Bozza Bilancio', 'Altro']
+    default_index = 1 if tipo == 'Visura' else 0
+
+    with st.form('review_report_visura'):
+        categoria_doc = st.selectbox('Categoria documento', categorie, index=default_index)
         c1, c2 = st.columns(2)
         with c1:
             denominazione = st.text_input('Denominazione', data.get('denominazione',''))
@@ -93,7 +119,7 @@ def inserisci_report():
             sede = st.text_input('Sede', data.get('sede',''))
             attivita = st.text_input('Attività', data.get('attivita',''))
             pec = st.text_input('PEC', data.get('pec',''))
-            amministratore = st.text_input('Amministratore', data.get('amministratore',''))
+            amministratore = st.text_input('Amministratore / Legale rappresentante', data.get('amministratore',''))
         with c2:
             ricavi = st.text_input('Ricavi', data.get('ricavi',''))
             mol = st.text_input('MOL', data.get('mol',''))
@@ -101,15 +127,20 @@ def inserisci_report():
             cash_flow = st.text_input('Cash Flow', data.get('cash_flow',''))
             indice = st.text_input('Indice indebitamento', data.get('indice_indebitamento',''))
             st.text_input('Fido indicato nel report', data.get('fido',''))
-        salva = st.form_submit_button('Conferma e salva cliente + report + valutazione')
+        salva = st.form_submit_button('Conferma e salva cliente + documento')
+
     if salva:
         cliente_id = insert_cliente(denominazione, piva, sede, attivita, pec, amministratore, '', '')
         uploaded.seek(0)
-        local_path, provider, cloud_id = archive_uploaded_file(cliente_id, 'Report', uploaded)
-        insert_documento(cliente_id, 'Report', uploaded.name, local_path, provider, cloud_id)
-        score, rating, rischio, fido = calcola_score_da_indicatori(ricavi, mol, utile, cash_flow, indice)
-        insert_valutazione(cliente_id, score, rating, fido, valutazione_base(score, rating, rischio, fido), ricavi, mol, utile, cash_flow, indice)
-        st.success('Report importato, cliente salvato e valutazione creata.')
+        local_path, provider, cloud_id = archive_uploaded_file(cliente_id, categoria_doc, uploaded)
+        insert_documento(cliente_id, categoria_doc, uploaded.name, local_path, provider, cloud_id)
+
+        if has_indicatori(ricavi, mol, utile, cash_flow, indice):
+            score, rating, rischio, fido = calcola_score_da_indicatori(ricavi, mol, utile, cash_flow, indice)
+            insert_valutazione(cliente_id, score, rating, fido, valutazione_base(score, rating, rischio, fido), ricavi, mol, utile, cash_flow, indice)
+            st.success('Cliente, documento e valutazione salvati automaticamente.')
+        else:
+            st.success('Cliente e documento salvati. Nessuna valutazione creata perché il PDF non contiene indicatori economici leggibili.')
 
 
 def gestione_documenti():
@@ -124,7 +155,7 @@ def gestione_documenti():
     uploaded = st.file_uploader('Carica documento', type=['pdf','xlsx','csv','docx','txt'])
     if st.button('Salva documento') and uploaded:
         docs = list_documenti(cliente_id)
-        if categoria in ['Bilancio','Centrale Rischi','Bozza Bilancio','Report'] and not docs[docs['categoria'] == categoria].empty:
+        if categoria in ['Bilancio','Centrale Rischi','Bozza Bilancio','Report','Visura'] and not docs[docs['categoria'] == categoria].empty:
             st.error('Esiste già un documento per questa categoria e cliente.')
             return
         local_path, provider, cloud_id = archive_uploaded_file(cliente_id, categoria, uploaded)
@@ -220,8 +251,8 @@ def main():
     css(); init_db()
     with st.sidebar:
         st.title('🏦 FinancePlusTech')
-        page = st.radio('Menu', ['Dashboard','Nuovo Cliente','Elenco Clienti','Collaboratori','Inserisci Report','Gestione Documenti','Gestione Richieste','Mail','Valutazione'])
-    pages = {'Dashboard': dashboard, 'Nuovo Cliente': nuovo_cliente, 'Elenco Clienti': elenco_clienti, 'Collaboratori': collaboratori, 'Inserisci Report': inserisci_report, 'Gestione Documenti': gestione_documenti, 'Gestione Richieste': gestione_richieste, 'Mail': mail, 'Valutazione': valutazione}
+        page = st.radio('Menu', ['Dashboard','Nuovo Cliente','Elenco Clienti','Collaboratori','Inserisci Report/Visura','Gestione Documenti','Gestione Richieste','Mail','Valutazione'])
+    pages = {'Dashboard': dashboard, 'Nuovo Cliente': nuovo_cliente, 'Elenco Clienti': elenco_clienti, 'Collaboratori': collaboratori, 'Inserisci Report/Visura': inserisci_report_visura, 'Gestione Documenti': gestione_documenti, 'Gestione Richieste': gestione_richieste, 'Mail': mail, 'Valutazione': valutazione}
     pages[page]()
 
 

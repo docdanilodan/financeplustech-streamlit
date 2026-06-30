@@ -1,9 +1,15 @@
 @echo off
+cd /d "%~dp0"
 echo ===========================================
 echo FinancePlusTech Web App
 echo ===========================================
+echo Cartella corrente:
+cd
+echo.
 echo Installazione dipendenze...
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+echo.
 echo Avvio applicazione...
-streamlit run app.py
+python -m streamlit run app.py
 pause

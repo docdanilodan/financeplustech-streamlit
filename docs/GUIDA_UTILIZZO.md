@@ -49,6 +49,40 @@ Inserisci:
 7. Il sistema salva cliente e documento.
 8. Se trova ricavi, MOL, utile, cash flow o indebitamento, crea anche la valutazione.
 
+## Scarica Mail/Allegati
+
+Questa sezione serve per scaricare piu mail e piu allegati in automatico.
+
+### Prima configurazione
+
+1. Vai su `Scarica Mail/Allegati`.
+2. Apri `Configurazione casella mail`.
+3. Inserisci:
+   - host IMAP
+   - porta
+   - email / username
+   - password o app password
+   - cartella IMAP, di solito INBOX
+4. Premi `Salva configurazione mail`.
+
+Dalla volta successiva non devi reinserire i dati: la configurazione resta salvata.
+
+### Scarico automatico
+
+1. Scegli la data di partenza.
+2. Scegli quante mail leggere.
+3. Premi `Scarica mail e allegati`.
+4. Il sistema legge le mail.
+5. Cerca il nome cliente nel testo, nell'oggetto e negli allegati PDF.
+6. Se trova il cliente, abbina gli allegati.
+7. Se il cliente non esiste, lo crea automaticamente.
+8. Se non riesce ad abbinare, mette il file in `archive/_temporanea_da_classificare`.
+
+### Eliminazione dalla casella mail
+
+L'opzione `Elimina dalla casella mail dopo salvataggio riuscito` e disattivata di default.
+Attivala solo se vuoi cancellare dalla casella le mail gia salvate nel gestionale.
+
 ## Gestione Documenti
 
 Scegli cliente e categoria:
@@ -72,18 +106,16 @@ Inserisci:
 - stato richiesta
 - semaforo giallo/verde
 
-## Mail
+## Mail salvate
 
-Salva comunicazioni in entrata e uscita con:
+Nella pagina `Mail` puoi:
 
-- data
-- direzione
-- stato
-- responsabile
-- mittente o destinatario
-- oggetto
-- testo o note
-- allegato
+- vedere tutte le mail salvate
+- inserire una mail manualmente
+- selezionare piu mail
+- scaricare le mail selezionate in CSV
+- scaricare tutte le mail in CSV
+- eliminare dal gestionale le mail selezionate
 
 ## Valutazione
 

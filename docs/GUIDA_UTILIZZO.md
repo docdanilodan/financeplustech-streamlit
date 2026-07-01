@@ -125,3 +125,31 @@ Nella pagina `Mail` puoi:
 4. Premi `Esegui analisi`.
 5. Premi `Genera report PDF`.
 6. Scarica il PDF finale.
+
+
+## Scarico solo da mittenti autorizzati
+
+La sezione `Scarica Mail/Allegati` e bloccata sugli 8 mittenti autorizzati indicati in `docs/MITTENTI_AUTORIZZATI.md`.
+
+Quando premi `Scarica mail e allegati`, il sistema:
+
+1. cerca solo le mail provenienti da quegli indirizzi;
+2. scarica gli allegati;
+3. crea o aggiorna il cliente;
+4. salva gli allegati nella cartella cliente;
+5. mette in `archive/_temporanea_da_classificare` i documenti non abbinati;
+6. ignora qualunque altra mail.
+
+
+## Correzione Gmail OVERQUOTA
+
+Questa versione contiene una modalità anti-OVERQUOTA:
+
+- massimo 20 mail per blocco;
+- consigliato 5/10 mail per scarico;
+- pausa automatica tra una mail e la successiva;
+- scarico solo nuove mail non già elaborate;
+- filtro rigido sugli 8 mittenti autorizzati;
+- stop automatico se Gmail blocca temporaneamente IMAP.
+
+Leggi anche `docs/GUIDA_OVERQUOTA_GMAIL.md`.

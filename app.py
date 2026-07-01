@@ -3,7 +3,7 @@ from pathlib import Path
 import streamlit as st
 
 from financeplus.db import init_db, run, insert_cliente, insert_collaboratore, insert_documento, insert_richiesta, insert_mail, insert_valutazione, list_clienti, list_collaboratori, list_documenti, list_richieste, list_mail, list_valutazioni
-from financeplus.mail_importer import import_mail_attachments, load_mail_config, save_mail_config
+from financeplus.mail_importer import ALLOWED_SENDERS, import_mail_attachments, load_mail_config, save_mail_config
 from financeplus.parsers import parse_report_pdf
 from financeplus.reports import genera_pdf_valutazione
 from financeplus.scoring import calcola_score_da_indicatori, valutazione_base
@@ -235,7 +235,7 @@ def mail():
 
 def scarica_mail_allegati():
     st.header('Scarica Mail e Allegati')
-    st.info('Configuri una volta i dati IMAP, li salvi, poi premi Scarica mail e allegati. I clienti vengono creati automaticamente se riconosciuti dai PDF o dal testo della mail.')
+    st.info('Configuri una volta i dati IMAP, li salvi, poi premi Scarica mail e allegati. Modalita anti-OVERQUOTA attiva: scarico a piccoli blocchi e solo nuove mail non gia elaborate.')
 
     config = load_mail_config()
     with st.expander('Configurazione casella mail - salva una volta', expanded=not bool(config)):
@@ -249,19 +249,28 @@ def scarica_mail_allegati():
             st.success('Configurazione salvata. Dalla prossima volta non devi reinserirla.')
 
     st.subheader('Download automatico')
+    st.success('Filtro attivo: vengono scaricate solo le mail e gli allegati degli 8 mittenti autorizzati.')
+    with st.expander('Mittenti autorizzati - bloccati nel codice', expanded=True):
+        st.code('\n'.join(ALLOWED_SENDERS))
     since_date = st.date_input('Scarica mail da questa data')
-    limit = st.number_input('Numero massimo mail da leggere', min_value=1, max_value=500, value=50, step=10)
+    st.warning('Per evitare OVERQUOTA Gmail, non scaricare 50/100 mail tutte insieme. Usa blocchi da 5 o 10.')
+    limit = st.number_input('Numero massimo mail da leggere per blocco', min_value=1, max_value=20, value=10, step=1)
+    only_new = st.checkbox('Scarica solo nuove mail non gia elaborate', value=True)
+    only_with_attachments = st.checkbox('Solo mail con allegati', value=True)
+    sleep_seconds = st.number_input('Pausa tra una mail e la successiva - secondi', min_value=0.0, max_value=10.0, value=1.5, step=0.5)
     delete_after = st.checkbox('Elimina dalla casella mail dopo salvataggio riuscito', value=False)
-    st.caption('Le mail non abbinate a un cliente finiscono in archive/_temporanea_da_classificare.')
+    st.caption('Le mail di mittenti diversi dagli 8 autorizzati vengono ignorate. Le mail non abbinate a un cliente finiscono in archive/_temporanea_da_classificare.')
 
     if st.button('Scarica mail e allegati'):
         cfg = load_mail_config()
         try:
-            results = import_mail_attachments(cfg, since_date=since_date, limit=int(limit), delete_after_save=delete_after)
+            results = import_mail_attachments(cfg, since_date=since_date, limit=int(limit), delete_after_save=delete_after, only_new=only_new, only_with_attachments=only_with_attachments, sleep_seconds=float(sleep_seconds))
             st.success(f'Operazione completata. Mail elaborate: {len(results)}')
             st.dataframe(results, use_container_width=True)
         except Exception as exc:
             st.error(f'Errore import mail: {exc}')
+            if 'OVERQUOTA' in str(exc).upper():
+                st.info('Soluzione: attendi 30-60 minuti, poi imposta 5 mail per blocco. Non premere ripetutamente Cerca/Scarica.')
 
 
 def valutazione():

@@ -2,6 +2,23 @@
 
 Web app Streamlit per archivio clienti, collaboratori, documenti, richieste, mail, allegati e valutazioni bancarie.
 
+## Blocco mittenti autorizzati
+
+Questa versione scarica **solo** mail e allegati provenienti da questi indirizzi:
+
+```text
+elibetty731@gmail.com
+Valentinaboratto82@gmail.com
+stefano.faraone@eurofintechsrl.it
+praticheBS@proton.me
+sergio.pedolazzi@katudi.it
+paolo.baldinelli@katudi.it
+pratiche@katudi.it
+niccolo.sovico@ener2crowd.com
+```
+
+Le mail provenienti da altri mittenti vengono ignorate e non vengono salvate.
+
 ## Funzioni incluse
 
 - Dashboard con KPI
@@ -121,3 +138,17 @@ streamlit run app.py
 ## Archivio
 
 La web app funziona subito con archivio locale. Per Google Drive o pCloud, copia `.streamlit/secrets.example.toml` nei secrets di Streamlit Cloud e configura provider, token e cartella.
+
+
+## Correzione Gmail OVERQUOTA
+
+Questa versione contiene una modalità anti-OVERQUOTA:
+
+- massimo 20 mail per blocco;
+- consigliato 5/10 mail per scarico;
+- pausa automatica tra una mail e la successiva;
+- scarico solo nuove mail non già elaborate;
+- filtro rigido sugli 8 mittenti autorizzati;
+- stop automatico se Gmail blocca temporaneamente IMAP.
+
+Leggi anche `docs/GUIDA_OVERQUOTA_GMAIL.md`.

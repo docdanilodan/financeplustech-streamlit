@@ -1,6 +1,6 @@
 # FinancePlusTech Streamlit Web App
 
-Web app Streamlit per archivio clienti, collaboratori, documenti, richieste, mail e valutazioni bancarie.
+Web app Streamlit per archivio clienti, collaboratori, documenti, richieste, mail, allegati e valutazioni bancarie.
 
 ## Funzioni incluse
 
@@ -11,6 +11,14 @@ Web app Streamlit per archivio clienti, collaboratori, documenti, richieste, mai
 - Elenco clienti
 - Collaboratori
 - Inserimento report PDF o visura
+- Scarico mail e allegati via IMAP
+- Salvataggio configurazione mail: la inserisci una volta e poi riusi
+- Creazione automatica cliente da allegati o testo mail
+- Abbinamento automatico allegati al cliente
+- Cartella temporanea per allegati non abbinati
+- Download CSV di mail salvate
+- Eliminazione mail selezionate dal gestionale
+- Opzione eliminazione mail dalla casella dopo salvataggio
 - Gestione documenti
 - Archivio locale, Google Drive o pCloud
 - Gestione richieste documentali
@@ -19,7 +27,7 @@ Web app Streamlit per archivio clienti, collaboratori, documenti, richieste, mai
 - Generazione report PDF
 - Dati demo
 
-## Come usare l'autocompilazione
+## Come usare l'autocompilazione da report o visura
 
 ### Metodo 1: Nuovo Cliente
 
@@ -38,6 +46,27 @@ Web app Streamlit per archivio clienti, collaboratori, documenti, richieste, mai
 5. Salva cliente e documento.
 6. Se nel report ci sono indicatori economici, crea anche la valutazione.
 
+## Come usare scarico mail e allegati
+
+1. Vai su `Scarica Mail/Allegati`.
+2. Inserisci host IMAP, porta, email, password/app password e cartella IMAP.
+3. Premi `Salva configurazione mail`.
+4. Dalla volta successiva non devi reinserire i dati.
+5. Scegli data di partenza e numero massimo mail.
+6. Premi `Scarica mail e allegati`.
+7. Il sistema crea il cliente se lo riconosce.
+8. Abbina gli allegati al cliente.
+9. Gli allegati non riconosciuti finiscono in `archive/_temporanea_da_classificare`.
+
+## Gestione mail salvate
+
+Nella pagina `Mail` puoi:
+
+- vedere tutte le mail salvate
+- selezionare piu mail
+- scaricarle in CSV
+- eliminare le mail selezionate dal gestionale
+
 ## Struttura progetto
 
 ```text
@@ -52,6 +81,7 @@ financeplus/
   scoring.py
   reports.py
   parsers.py
+  mail_importer.py
 .streamlit/
   config.toml
   secrets.example.toml

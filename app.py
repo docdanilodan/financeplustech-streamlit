@@ -1,6 +1,9 @@
 from pathlib import Path
+
 import streamlit as st
-from financeplus.db import init_db, insert_cliente, insert_collaboratore, insert_documento, insert_richiesta, insert_mail, insert_valutazione, list_clienti, list_collaboratori, list_documenti, list_richieste, list_mail, list_valutazioni
+
+from financeplus.db import init_db, run, insert_cliente, insert_collaboratore, insert_documento, insert_richiesta, insert_mail, insert_valutazione, list_clienti, list_collaboratori, list_documenti, list_richieste, list_mail, list_valutazioni
+from financeplus.mail_importer import import_mail_attachments, load_mail_config, save_mail_config
 from financeplus.parsers import parse_report_pdf
 from financeplus.reports import genera_pdf_valutazione
 from financeplus.scoring import calcola_score_da_indicatori, valutazione_base
@@ -18,7 +21,7 @@ def css():
 
 
 def hero():
-    st.markdown('<div class="hero"><h1>🏦 FinancePlusTech Web App</h1><p>Archivio clienti, documenti, richieste, mail e valutazioni bancarie.</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero"><h1>🏦 FinancePlusTech Web App</h1><p>Archivio clienti, documenti, allegati, richieste, mail e valutazioni bancarie.</p></div>', unsafe_allow_html=True)
 
 
 def clienti_options():
@@ -134,7 +137,6 @@ def inserisci_report_visura():
         uploaded.seek(0)
         local_path, provider, cloud_id = archive_uploaded_file(cliente_id, categoria_doc, uploaded)
         insert_documento(cliente_id, categoria_doc, uploaded.name, local_path, provider, cloud_id)
-
         if has_indicatori(ricavi, mol, utile, cash_flow, indice):
             score, rating, rischio, fido = calcola_score_da_indicatori(ricavi, mol, utile, cash_flow, indice)
             insert_valutazione(cliente_id, score, rating, fido, valutazione_base(score, rating, rischio, fido), ricavi, mol, utile, cash_flow, indice)
@@ -187,27 +189,79 @@ def gestione_richieste():
 
 
 def mail():
-    st.header('Mail')
+    st.header('Mail salvate')
     opts = clienti_options()
-    if not opts:
-        st.warning('Prima inserisci almeno un cliente.')
-        return
-    label = st.selectbox('Cliente', list(opts.keys()))
-    cliente_id = opts[label]
-    with st.form('mail'):
-        data_mail = st.date_input('Data mail')
-        direzione = st.selectbox('Direzione', ['Entrata','Uscita'])
-        stato = st.text_input('Stato')
-        responsabile = st.text_input('Responsabile')
-        md = st.text_input('Destinatario / Mittente')
-        oggetto = st.text_input('Oggetto')
-        testo = st.text_area('Testo / note', height=170)
-        allegato = st.text_input('Allegato')
-        salva = st.form_submit_button('Salva mail')
-    if salva:
-        insert_mail(cliente_id, str(data_mail), direzione, stato, responsabile, md, oggetto, testo, allegato)
-        st.success('Mail salvata.')
-    st.dataframe(list_mail(cliente_id), use_container_width=True)
+    all_mail = list_mail()
+
+    with st.expander('Inserimento manuale mail'):
+        if not opts:
+            st.warning('Prima inserisci almeno un cliente.')
+        else:
+            label = st.selectbox('Cliente', list(opts.keys()), key='mail_cliente_manuale')
+            cliente_id = opts[label]
+            with st.form('mail'):
+                data_mail = st.date_input('Data mail')
+                direzione = st.selectbox('Direzione', ['Entrata','Uscita'])
+                stato = st.text_input('Stato')
+                responsabile = st.text_input('Responsabile')
+                md = st.text_input('Destinatario / Mittente')
+                oggetto = st.text_input('Oggetto')
+                testo = st.text_area('Testo / note', height=170)
+                allegato = st.text_input('Allegato')
+                salva = st.form_submit_button('Salva mail')
+            if salva:
+                insert_mail(cliente_id, str(data_mail), direzione, stato, responsabile, md, oggetto, testo, allegato)
+                st.success('Mail salvata.')
+
+    st.subheader('Archivio mail')
+    st.dataframe(all_mail, use_container_width=True)
+
+    if not all_mail.empty:
+        ids = all_mail['id'].tolist()
+        selected_ids = st.multiselect('Seleziona mail da scaricare o eliminare dal gestionale', ids)
+        selected_df = all_mail[all_mail['id'].isin(selected_ids)] if selected_ids else all_mail.iloc[0:0]
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if selected_ids:
+                st.download_button('Scarica mail selezionate CSV', selected_df.to_csv(index=False).encode('utf-8-sig'), file_name='mail_selezionate.csv', mime='text/csv')
+        with c2:
+            st.download_button('Scarica tutte le mail CSV', all_mail.to_csv(index=False).encode('utf-8-sig'), file_name='mail_tutte.csv', mime='text/csv')
+        with c3:
+            if selected_ids and st.button('Elimina mail selezionate dal gestionale'):
+                placeholders = ','.join(['?'] * len(selected_ids))
+                run(f'DELETE FROM mail WHERE id IN ({placeholders})', tuple(selected_ids))
+                st.success('Mail selezionate eliminate dal gestionale. Riavvia/aggiorna la pagina.')
+
+
+def scarica_mail_allegati():
+    st.header('Scarica Mail e Allegati')
+    st.info('Configuri una volta i dati IMAP, li salvi, poi premi Scarica mail e allegati. I clienti vengono creati automaticamente se riconosciuti dai PDF o dal testo della mail.')
+
+    config = load_mail_config()
+    with st.expander('Configurazione casella mail - salva una volta', expanded=not bool(config)):
+        host = st.text_input('Host IMAP', config.get('host', 'imap.gmail.com'))
+        port = st.number_input('Porta', value=int(config.get('port', 993)), step=1)
+        username = st.text_input('Email / Username', config.get('username', ''))
+        password = st.text_input('Password / App password', config.get('password', ''), type='password')
+        mailbox = st.text_input('Cartella IMAP', config.get('mailbox', 'INBOX'))
+        if st.button('Salva configurazione mail'):
+            save_mail_config({'host': host, 'port': int(port), 'username': username, 'password': password, 'mailbox': mailbox})
+            st.success('Configurazione salvata. Dalla prossima volta non devi reinserirla.')
+
+    st.subheader('Download automatico')
+    since_date = st.date_input('Scarica mail da questa data')
+    limit = st.number_input('Numero massimo mail da leggere', min_value=1, max_value=500, value=50, step=10)
+    delete_after = st.checkbox('Elimina dalla casella mail dopo salvataggio riuscito', value=False)
+    st.caption('Le mail non abbinate a un cliente finiscono in archive/_temporanea_da_classificare.')
+
+    if st.button('Scarica mail e allegati'):
+        cfg = load_mail_config()
+        try:
+            results = import_mail_attachments(cfg, since_date=since_date, limit=int(limit), delete_after_save=delete_after)
+            st.success(f'Operazione completata. Mail elaborate: {len(results)}')
+            st.dataframe(results, use_container_width=True)
+        except Exception as exc:
+            st.error(f'Errore import mail: {exc}')
 
 
 def valutazione():
@@ -251,8 +305,8 @@ def main():
     css(); init_db()
     with st.sidebar:
         st.title('🏦 FinancePlusTech')
-        page = st.radio('Menu', ['Dashboard','Nuovo Cliente','Elenco Clienti','Collaboratori','Inserisci Report/Visura','Gestione Documenti','Gestione Richieste','Mail','Valutazione'])
-    pages = {'Dashboard': dashboard, 'Nuovo Cliente': nuovo_cliente, 'Elenco Clienti': elenco_clienti, 'Collaboratori': collaboratori, 'Inserisci Report/Visura': inserisci_report_visura, 'Gestione Documenti': gestione_documenti, 'Gestione Richieste': gestione_richieste, 'Mail': mail, 'Valutazione': valutazione}
+        page = st.radio('Menu', ['Dashboard','Nuovo Cliente','Elenco Clienti','Collaboratori','Inserisci Report/Visura','Scarica Mail/Allegati','Gestione Documenti','Gestione Richieste','Mail','Valutazione'])
+    pages = {'Dashboard': dashboard, 'Nuovo Cliente': nuovo_cliente, 'Elenco Clienti': elenco_clienti, 'Collaboratori': collaboratori, 'Inserisci Report/Visura': inserisci_report_visura, 'Scarica Mail/Allegati': scarica_mail_allegati, 'Gestione Documenti': gestione_documenti, 'Gestione Richieste': gestione_richieste, 'Mail': mail, 'Valutazione': valutazione}
     pages[page]()
 
 
